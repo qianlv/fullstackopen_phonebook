@@ -1,7 +1,33 @@
 const express = require("express")
+const app = express()
+require("dotenv").config()
+
 const morgan = require("morgan")
 const cors = require("cors")
-const app = express()
+
+const Person = require("./models/person")
+
+const unknownEndpoint = (request, response) => {
+  response.status(404).send({ error: 'unknown endpoint' })
+}
+
+const errorHandler = (error, request, response, next) => {
+  console.error(error.message)
+
+  if (error.name === 'CastError') {
+    return response.status(400).send({ error: 'malformatted id' })
+  } else if (error.name === 'NameMissing') {
+    return response.status(400).json({
+      error: 'name missing'
+    })
+  } else if (error.name === 'NumberMissing') {
+    return response.status(400).json({
+      error: 'number missing'
+    })
+  }
+
+  next(error)
+}
 
 app.use(cors())
 app.use(express.static('dist'))
@@ -9,81 +35,94 @@ app.use(express.json())
 morgan.token('body', function (req, res) { return JSON.stringify(req.body) })
 app.use(morgan(":method :url :status :res[content-length] - :response-time ms :body"))
 
-let phonebooks = [
-  {
-    "id": "1",
-    "name": "Arto Hellas",
-    "number": "040-123456"
-  },
-  {
-    "id": "2",
-    "name": "Ada Lovelace",
-    "number": "39-44-5323523"
-  },
-  {
-    "id": "3",
-    "name": "Dan Abramov",
-    "number": "12-43-234345"
-  },
-  {
-    "id": "4",
-    "name": "Mary Poppendieck",
-    "number": "39-23-6423122"
-  }
-]
-
 app.get("/api/persons", (request, response) => {
-  response.json(phonebooks)
+  Person.find({}).then(persons => {
+    response.json(persons);
+  })
 })
 
-app.get("/api/persons/:id", (request, response) => {
+app.get("/api/persons/:id", (request, response, next) => {
   const id = request.params.id
-  const person = phonebooks.find(person => person.id === id)
-  if (person) {
-    response.json(person)
-  } else {
-    response.status(404).end()
-  }
+  Person.findById(id).then(person => {
+    if (person) {
+      response.json(person)
+    } else {
+      response.status(404).end()
+    }
+  }).catch(error => {
+    next(error)
+  })
 })
 
-app.get("/info", (request, response) => {
-  response.send(`<p>Phonebook has info for ${phonebooks.length} people</p><p>${new Date().toString()}</p>`)
-})
-
-app.delete("/api/persons/:id", (request, response) => {
-  const id = request.params.id
-  phonebooks = phonebooks.filter(person => person.id !== id)
-  response.status(204).end()
-})
-
-app.post("/api/persons", (request, response) => {
-  const body = request.body
-  if (!body.name) {
-    return response.status(400).json({
-      error: 'name missing'
+app.get("/info", (_request, response, next) => {
+  Person.countDocuments({})
+    .then(length => {
+      response.send(`<p>Phonebook has info for ${length} people</p><p>${new Date().toString()}</p>`)
     })
+    .catch(error => next(error))
+})
+
+app.delete("/api/persons/:id", (request, response, next) => {
+  const id = request.params.id
+  Person.findByIdAndDelete(id)
+    .then(_result => {
+      response.status(204).end()
+    })
+    .catch(error => next(error))
+})
+
+app.put("/api/persons/:id", (request, response, next) => {
+  const id = request.params.id
+  const body = request.body
+
+  if (!body.name) {
+    return next({ name: "NameMissing" })
   }
   if (!body.number) {
-    return response.status(400).json({
-      error: 'number missing'
-    })
+    return next({ name: "NumberMissing" })
   }
 
-  if (phonebooks.find(person => person.name === String(body.name))) {
-    return response.status(400).json({
-      error: 'name must be unique'
-    })
-  }
-  const person = {
-    id: String(Math.floor(Math.random() * 10000000)),
+  const newPerson = {
     name: String(body.name),
     number: String(body.number),
   }
 
-  phonebooks = phonebooks.concat(person)
-
-  response.json(person)
+  Person.findByIdAndUpdate(id, newPerson, { new: true })
+    .then(updatePerson => {
+      response.json(updatePerson)
+    })
+    .catch(error => next(error))
 })
+
+app.post("/api/persons", (request, response, next) => {
+  const body = request.body
+  if (!body.name) {
+    return next({ name: "NameMissing" })
+  }
+  if (!body.number) {
+    return next({ name: "NumberMissing" })
+  }
+
+  // if (phonebooks.find(person => person.name === String(body.name))) {
+  //   return response.status(400).json({
+  //     error: 'name must be unique'
+  //   })
+  // }
+  const person = new Person({
+    name: String(body.name),
+    number: String(body.number),
+  })
+
+  person.save()
+    .then(result => {
+      console.log(`add person ${person}`)
+      response.json(person)
+    })
+    .catch(error => next(error))
+})
+
+app.use(unknownEndpoint)
+app.use(errorHandler)
 
 const PORT = process.env.POST || 3001
 app.listen(PORT, () => {
