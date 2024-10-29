@@ -1,6 +1,6 @@
 import personsService from '../services/persons'
 
-const PersonForm = ({ newName, newPhone, setNewName, setNewPhone, persons, setPersons, setMessage }) => {
+const PersonForm = ({ newName, newPhone, setNewName, setNewPhone, persons, setPersons, setMessage, setError }) => {
   const handleNameChange = (event) => {
     setNewName(event.target.value)
   }
@@ -20,23 +20,33 @@ const PersonForm = ({ newName, newPhone, setNewName, setNewPhone, persons, setPe
       console.log(person)
       if (confirm(`${newName} is already added to phonebook, replace the old number with a new one`)) {
         newPerson.id = person.id
-        personsService.update(person.id, newPerson).then(returnPerson => {
-          console.log("returnPerson ", returnPerson)
-          setMessage(`Updated ${returnPerson.name}`)
-          setTimeout(() => setMessage(null), 5000)
-          setPersons(persons.map(person => person.id === returnPerson.id ? returnPerson : person))
-        })
+        personsService.update(person.id, newPerson)
+          .then(returnPerson => {
+            console.log("returnPerson ", returnPerson)
+            setMessage(`Updated ${returnPerson.name}`)
+            setTimeout(() => setMessage(null), 5000)
+            setPersons(persons.map(person => person.id === returnPerson.id ? returnPerson : person))
+          })
+          .catch(error => {
+            setError(error.response.data.error)
+            console.log(error.response.data.error)
+          })
       }
       return
     }
 
-    personsService.create(newPerson).then(returnPerson => {
-      setPersons(persons.concat(returnPerson))
-      setMessage(`Added ${returnPerson.name}`)
-      setTimeout(() => setMessage(null), 5000)
-      setNewName('')
-      setNewPhone('')
-    })
+    personsService.create(newPerson)
+      .then(returnPerson => {
+        setPersons(persons.concat(returnPerson))
+        setMessage(`Added ${returnPerson.name}`)
+        setTimeout(() => setMessage(null), 5000)
+        setNewName('')
+        setNewPhone('')
+      })
+      .catch(error => {
+        setError(error.response.data.error)
+        console.log(error.response.data.error)
+      })
 
   }
 

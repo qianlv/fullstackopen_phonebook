@@ -42,6 +42,7 @@ const App = () => {
         persons={persons}
         setPersons={setPersons}
         setMessage={setMessage}
+        setError={setError}
       />
       <h3>Numbers</h3>
       <Persons

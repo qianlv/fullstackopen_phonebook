@@ -15,14 +15,12 @@ const errorHandler = (error, request, response, next) => {
   console.error(error.message)
 
   if (error.name === 'CastError') {
-    return response.status(400).send({ error: 'malformatted id' })
-  } else if (error.name === 'NameMissing') {
-    return response.status(400).json({
-      error: 'name missing'
+    return response.status(400).send({
+      error: 'malformatted id'
     })
-  } else if (error.name === 'NumberMissing') {
+  } else if (error.name === 'ValidationError') {
     return response.status(400).json({
-      error: 'number missing'
+      error: error.message
     })
   }
 
@@ -73,21 +71,18 @@ app.delete("/api/persons/:id", (request, response, next) => {
 
 app.put("/api/persons/:id", (request, response, next) => {
   const id = request.params.id
-  const body = request.body
-
-  if (!body.name) {
-    return next({ name: "NameMissing" })
-  }
-  if (!body.number) {
-    return next({ name: "NumberMissing" })
-  }
+  const { name, number } = request.body;
 
   const newPerson = {
-    name: String(body.name),
-    number: String(body.number),
+    name: String(name),
+    number: String(number),
   }
 
-  Person.findByIdAndUpdate(id, newPerson, { new: true })
+  Person.findByIdAndUpdate(
+    id,
+    newPerson,
+    { new: true, runValidators: true, context: 'query' }
+  )
     .then(updatePerson => {
       response.json(updatePerson)
     })
@@ -95,25 +90,14 @@ app.put("/api/persons/:id", (request, response, next) => {
 })
 
 app.post("/api/persons", (request, response, next) => {
-  const body = request.body
-  if (!body.name) {
-    return next({ name: "NameMissing" })
-  }
-  if (!body.number) {
-    return next({ name: "NumberMissing" })
-  }
+  const { name, number } = request.body;
 
-  // if (phonebooks.find(person => person.name === String(body.name))) {
-  //   return response.status(400).json({
-  //     error: 'name must be unique'
-  //   })
-  // }
   const person = new Person({
-    name: String(body.name),
-    number: String(body.number),
+    name: String(name),
+    number: String(number),
   })
 
-  person.save()
+  person.save({ runValidators: true })
     .then(result => {
       console.log(`add person ${person}`)
       response.json(person)
