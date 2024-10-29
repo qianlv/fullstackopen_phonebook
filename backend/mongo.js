@@ -24,9 +24,9 @@ mongoose.connect(url).then(() => {
       name: process.argv[3],
       number: process.argv[4],
     })
-    person.save().then(result => {
-      console.log(`added ${person.name} number ${person.number} to phonebook`);
-      mongoose.connection.close();
+    person.save().then(() => {
+      console.log(`added ${person.name} number ${person.number} to phonebook`)
+      mongoose.connection.close()
     })
   } else {
     Person.find({}).then(result => {
@@ -38,7 +38,7 @@ mongoose.connect(url).then(() => {
     }).catch(error => {
       console.log(`error ${error}`)
     }).finally(() => {
-      mongoose.connection.close();
+      mongoose.connection.close()
     })
   }
 

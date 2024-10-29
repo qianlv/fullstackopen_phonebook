@@ -5,11 +5,11 @@ console.log(`connect to ${url}`)
 
 mongoose.set('strictQuery', false)
 mongoose.connect(url)
-  .then(_result => {
+  .then(() => {
     console.log('connected to MongoDB')
   })
   .catch((error) => {
-    console.log('error connecting to MongoDB:', error.message);
+    console.log('error connecting to MongoDB:', error.message)
   })
 
 const personSchema = new mongoose.Schema({
@@ -23,7 +23,7 @@ const personSchema = new mongoose.Schema({
     validate: {
       validator: function (value) {
         if (value.length < 9) {
-          return false;
+          return false
         }
         const ret = /\d{2,3}-\d{5,}/.test(value)
         console.log('validator value ', ret)
